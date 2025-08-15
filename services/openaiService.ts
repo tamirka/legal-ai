@@ -1,71 +1,31 @@
-// This check ensures that the API key is available.
-// In a real-world scenario, this would be handled by the environment setup.
-
-const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
-
-// The system instruction is crucial for simulating the "fine-tuned" behavior.
-// It makes the base model act like a specialized legal expert.
-const systemInstruction = `You are a highly knowledgeable legal expert specializing in corporate law, contract law, and intellectual property. Provide concise, accurate, and professional advice, citing general legal principles where applicable. Do not provide specific legal advice that would constitute a lawyer-client relationship, and always include a disclaimer that the information is for informational purposes only and not a substitute for professional legal counsel.`;
 
 /**
- * Calls the OpenAI API to get a legal insight based on the user's query.
+ * Calls our secure backend API route to get a legal insight.
  * @param promptText The legal query from the user.
  * @returns A promise that resolves to the AI's response as a string.
  */
 export async function getLegalInsight(promptText: string): Promise<string> {
-    // Check for the API key inside the function, just before making the call.
-    // This prevents the app from crashing on load if the key is not set.
-    if (!process.env.API_KEY) {
-        console.error("API_KEY environment variable not set.");
-        // This error will be caught by the handleSubmit function in AiInteraction.tsx
-        // and displayed to the user in the UI.
-        throw new Error("API key is not configured. Please add the API_KEY secret to your project environment.");
-    }
-    
     try {
-        const response = await fetch(OPENAI_API_URL, {
+        const response = await fetch('/api/generate', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${process.env.API_KEY}`
             },
-            body: JSON.stringify({
-                model: 'gpt-4-turbo', // Using a powerful model suitable for legal analysis
-                messages: [
-                    {
-                        role: 'system',
-                        content: systemInstruction
-                    },
-                    {
-                        role: 'user',
-                        content: promptText
-                    }
-                ],
-                temperature: 0.7,
-                top_p: 0.9,
-                max_tokens: 1500, // Generous token limit for detailed legal insights
-            })
+            body: JSON.stringify({ prompt: promptText })
         });
 
         if (!response.ok) {
             const errorData = await response.json();
-            console.error("OpenAI API Error:", errorData);
-            throw new Error(errorData.error?.message || `API request failed with status ${response.status}`);
+            console.error("API Route Error:", errorData);
+            throw new Error(errorData.error || `Request failed with status ${response.status}`);
         }
 
         const data = await response.json();
-        const insight = data.choices[0]?.message?.content?.trim();
-
-        if (!insight) {
-            throw new Error("Received an empty response from the AI.");
-        }
-
-        return insight;
+        return data.insight;
 
     } catch (error) {
-        console.error("Error calling OpenAI API:", error);
-        // Re-throw a user-friendly error message that can be displayed in the UI.
+        console.error("Error calling backend API:", error);
         const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
-        throw new Error(`Failed to get a response from the AI. Please check your connection or API key and try again. (Details: ${errorMessage})`);
+        throw new Error(`Failed to get a response. (Details: ${errorMessage})`);
     }
 }
