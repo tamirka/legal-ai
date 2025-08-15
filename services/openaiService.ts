@@ -1,8 +1,5 @@
 // This check ensures that the API key is available.
 // In a real-world scenario, this would be handled by the environment setup.
-if (!process.env.API_KEY) {
-    throw new Error("API_KEY environment variable not set. Please ensure it is configured.");
-}
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 
@@ -16,6 +13,15 @@ const systemInstruction = `You are a highly knowledgeable legal expert specializ
  * @returns A promise that resolves to the AI's response as a string.
  */
 export async function getLegalInsight(promptText: string): Promise<string> {
+    // Check for the API key inside the function, just before making the call.
+    // This prevents the app from crashing on load if the key is not set.
+    if (!process.env.API_KEY) {
+        console.error("API_KEY environment variable not set.");
+        // This error will be caught by the handleSubmit function in AiInteraction.tsx
+        // and displayed to the user in the UI.
+        throw new Error("API key is not configured. Please add the API_KEY secret to your project environment.");
+    }
+    
     try {
         const response = await fetch(OPENAI_API_URL, {
             method: 'POST',
